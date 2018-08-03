@@ -1,61 +1,6 @@
-Local mode simulates a Storm cluster in process and is useful for developing and testing topologies. Running topologies in local mode is similar to running topologies on a cluster.
-
-To run a topology in local mode you have two options. The most common option is to run your topology with storm local instead of storm jar
-
-This will bring up a local simulated cluster and force all interactions with nimbus to go through the simulated cluster instead of going to a separate process.
-
-If you want to do some automated testing but without actually launching a storm cluster you can use the same classes internally that storm local does.
-
-To do this you first need to pull in the dependencies needed to access these classes. For the java API you should depend on storm-server as a test dependency.
-
-To create an in-process cluster, simply use the LocalCluster class. For example:
-
-import org.apache.storm.LocalCluster;
-
-...
-
-try (LocalCluster cluster = new LocalCluster()) {
-    //Interact with the cluster...
-}
-You can then submit topologies using the submitTopology method on the LocalCluster object. Just like the corresponding method on StormSubmitter, submitTopology takes a name, a topology configuration, and the topology object. You can then kill a topology using the killTopology method which takes the topology name as an argument.
-
-The LocalCluster is an AutoCloseable and will shut down when close is called.
-
-many of the Nimbus APIs are also available through the LocalCluster.
-
-DRPC
-DRPC can be run in local mode as well. Here's how to run the above example in local mode:
-
-try (LocalDRPC drpc = new LocalDRPC();
-     LocalCluster cluster = new LocalCluster();
-     LocalTopology topo = cluster.submitTopology("drpc-demo", conf, builder.createLocalTopology(drpc))) {
-
-    System.out.println("Results for 'hello':" + drpc.execute("exclamation", "hello"));
-}
-First you create a LocalDRPC object. This object simulates a DRPC server in process, just like how LocalCluster simulates a Storm cluster in process. Then you create the LocalCluster to run the topology in local mode. LinearDRPCTopologyBuilder has separate methods for creating local topologies and remote topologies. In local mode the LocalDRPC object does not bind to any ports so the topology needs to know about the object to communicate with it. This is why createLocalTopology takes in the LocalDRPC object as input.
-
-After launching the topology, you can do DRPC invocations using the execute method on LocalDRPC.
-
-Because all of the objects used are instances of AutoCloseable when the try blocks scope ends the topology is killed, the cluster is shut down and the drpc server also shuts down.
-
-Clojure API
-Storm also offers a clojure API for testing.
-
-This blog post talk about this, but is a little out of date. To get this functionality you need to include the storm-clojure-test dependency. This will pull in a lot of storm itself that should not be packaged with your topology, sp please make sure it is a test dependency only,.
-
-Debugging your topology with an IDE
-One of the great use cases for local mode is to be able to walk through the code execution of your bolts and spouts using an IDE. You can do this on the command line by adding the --java-debug option followed by the parameter you would pass to jdwp. This makes it simple to launch the local cluster with -agentlib:jdwp= turned on.
-
-When running from within an IDE itself you can modify your code run run withing a call to LocalCluster.withLocalModeOverride
-
-public static void main(final String args[]) {
-    LocalCluster.withLocalModeOverride(() -> originalMain(args), 10);
-}
-Or you could also modify the IDE to run "org.apache.storm.LocalCluster" instead of your main class when launching, and pass in the name of the class as an argument to it. This will also trigger local mode, and is what storm local does behind the scenes.
-
-Common configurations for local mode
-You can see a full list of configurations here.
-
-Config.TOPOLOGY_MAX_TASK_PARALLELISM: This config puts a ceiling on the number of threads spawned for a single component. Oftentimes production topologies have a lot of parallelism (hundreds of threads) which places unreasonable load when trying to test the topology in local mode. This config lets you easy control that parallelism.
-Config.TOPOLOGY_DEBUG: When this is set to true, Storm will log a message every time a tuple is emitted from any spout or bolt. This is extremely useful for debugging.A
-These, like all other configs, can be set on the command line when launching your toplogy with the -c flag. The flag is of the form -c <conf_name>=<JSON_VALUE> so to enable debugging when launching your topology in local mode you could run
+User applications are submitted to the ResourceManager via a public protocol and go through an admission control phase during which security credentials are validated and various operational and administrative checks are performed. Those applications that are accepted pass to the scheduler and are allowed to run. Once the scheduler has enough resources to satisfy the request, the application is moved from an accepted state to a running state. Aside from internal bookkeeping, this process involves allocating
+a container for the ApplicationMaster and spawning it on a node in the cluster. Often called “container 0,” the ApplicationMaster does not get any additional resources at this point and must request and release additional containers.
+The ApplicationMaster is the “master” user job that manages all life-cycle aspects, including dynamically increasing and decreasing resources consumption (i.e., contain- ers), managing the flow of execution (e.g., in case of MapReduce jobs, running reduc- ers against the output of maps), handling faults and computation skew, and performing other local optimizations. The ApplicationMaster is designed to run arbitrary user code that can be written in any programming language, as all communication with the ResourceManager and NodeManager is encoded using extensible network proto- cols (i.e., Google Protocol Buffers, http://code.google.com/p/protobuf/).
+YARN makes few assumptions about the ApplicationMaster, although in practice it expects most jobs will use a higher-level programming framework. By delegating all these functions to ApplicationMasters, YARN’s architecture gains a great deal of scalability, programming model flexibility, and improved user agility. For example, upgrading and testing a new MapReduce framework can be done independently of other running MapReduce frameworks.
+Typically, an ApplicationMaster will need to harness the processing power of multiple servers to complete a job. To achieve this, the ApplicationMaster issues resource requests to the ResourceManager. The form of these requests includes specification of local-
+ity preferences (e.g., to accommodate HDFS use) and properties of the containers. The ResourceManager will attempt to satisfy the resource requests coming from each appli- cation according to availability and scheduling policies. When a resource is scheduled on behalf of an ApplicationMaster, the ResourceManager generates a lease for the resource, which is acquired by a subsequent ApplicationMaster heartbeat. A token-based security mechanism guarantees its authenticity when the ApplicationMaster presents the con- tainer lease to the NodeManager. In MapReduce, the code running in the container can be a map or a reduce task. Commonly, running containers will communicate with the ApplicationMaster through an application-specific protocol to report status and health information and to receive framework-specific commands. In this way, YARN provides a basic infrastructure for monitoring and life-cycle management of containers, while application-specific semantics are managed independently by each framework. This design is in sharp contrast to the original Hadoop version 1 design, in which scheduling was designed and integrated around managing only MapReduce tasks.
