@@ -1,0 +1,36 @@
+# data
+data/*
+!data/_keep
+
+# downloads
+opt/
+
+# python virtual environments
+.venv*
+
+# spark binaries
+spark-*-bin-hadoop2.7
+spark-*-bin-hadoop2.7.tgz
+
+# spark generated folders and files
+metastore_db
+derby.log
+spark-warehouse
+
+# jupyter notebooks
+**/.ipynb_checkpoints
+
+# intelliJ
+.idea
+*.iml
+
+# java projects
+.classpath
+.project
+.settings/
+
+# python projects
+__pycache__
+
+# GCP credentials
+twsg-data-eng-bootcamp*.json 
